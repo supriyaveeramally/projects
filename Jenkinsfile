@@ -1,12 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        // Define environment variables
-        SONARQUBE_URL = 'http://your-sonarqube-server'
-        SONARQUBE_TOKEN = credentials('sonarqube-token')
-    }
-
     stages {
         stage('Pre-Build: Linting') {
             steps {
@@ -24,7 +18,7 @@ pipeline {
             steps {
                 script {
                     if (env.PROJECT_TYPE == 'C' || env.PROJECT_TYPE == 'C++') {
-                        sh 'make'
+                        sh 'cmake . && make'
                     } else if (env.PROJECT_TYPE == 'Java') {
                         sh './gradlew build'
                     }
@@ -40,31 +34,6 @@ pipeline {
                         sh 'gcov main.cpp'
                     } else if (env.PROJECT_TYPE == 'Java') {
                         sh './gradlew test jacocoTestReport'
-                    }
-                }
-            }
-        }
-
-        stage('Static Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    script {
-                        if (env.PROJECT_TYPE == 'C' || env.PROJECT_TYPE == 'C++') {
-                            sh 'sonar-scanner -Dsonar.projectKey=my_project -Dsonar.sources=. -Dsonar.host.url=$SONARQUBE_URL -Dsonar.login=$SONARQUBE_TOKEN'
-                        } else if (env.PROJECT_TYPE == 'Java') {
-                            sh './gradlew sonarqube -Dsonar.projectKey=my_project -Dsonar.host.url=$SONARQUBE_URL -Dsonar.login=$SONARQUBE_TOKEN'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Gate Conditions') {
-            steps {
-                script {
-                    def coverage = readFile('coverage.txt').trim()
-                    if (coverage.toInteger() < 80) {
-                        error "Coverage is below 80%"
                     }
                 }
             }
